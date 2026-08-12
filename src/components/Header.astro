@@ -3,112 +3,310 @@ import HeaderControls from '~/components/HeaderControls.tsx'
 import MultiSearch from '~/components/MultiSearch.tsx'
 import StatusBanner from '~/components/StatusBanner.astro'
 /*
- * Header — editorial masthead bar ("Signal Press").
+ * Header — WIRE-DESK BROADSHEET masthead (not a centered top-nav bar).
  *
- *   ┌─────────────────────────────────────────────────────────────────┐
- *   │  oriz/blog        LATEST · SERIES · TAGS · ABOUT    ⌘K rss ··· │
- *   └─────────────────────────────────────────────────────────────────┘
+ *   ┌───────────────────────────────────────────────────────────────────┐
+ *   │ EDITION · <long date> · <n> dispatches           ⌘K  rss  ···  ⌂fam │  ← dateline strip
+ *   ╞═════════════════════════════════════════════════════════════════════╡  ← heavy rule
+ *   │                     T H E   S T A N D P O I N T                      │  ← nameplate
+ *   │              a wire desk that sorts signal from noise                │  ← motto
+ *   ╞═════════╤═════════╤═════════╤══════════╤═══════════╤════════════════╡  ← section index
+ *   │  WIRE   │  DESKS  │ TOPICS  │  ARCHIVE │   NOW     │     ABOUT       │
+ *   └─────────┴─────────┴─────────┴──────────┴───────────┴────────────────┘
  *
- * Left: serif wordmark. Center: mono uppercase nav with orange underline.
- * Right: search (⌘K), rss, ··· overflow. 64px, sticky, paper blur.
+ * The masthead is a full-width front-page block (dateline + nameplate + a
+ * column-ruled section index). Not sticky itself; on scroll a compact sticky
+ * "wire ticker" mini-bar takes over so navigation stays reachable. Deliberately
+ * NOT the sibling sites' compact wordmark + horizontal-nav bar.
  */
-import Wordmark from '~/components/Wordmark.astro'
+
+const now = new Date()
+const editionDate = now.toLocaleDateString('en-GB', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})
+const editionNo = (now.getFullYear() - 2018) * 100 + (now.getMonth() + 1)
+
+const path = Astro.url.pathname
+const sections = [
+  { label: 'Wire', href: '/', match: (p: string) => p === '/' },
+  { label: 'Desks', href: '/series/', match: (p: string) => p.startsWith('/series') },
+  { label: 'Topics', href: '/tags/', match: (p: string) => p.startsWith('/tags') },
+  { label: 'Archive', href: '/archive/', match: (p: string) => p.startsWith('/archive') },
+  { label: 'Now', href: '/now/', match: (p: string) => p.startsWith('/now') },
+  { label: 'About', href: '/about/', match: (p: string) => p.startsWith('/about') },
+]
 ---
 
 <StatusBanner />
-<header class="site-header" transition:persist="site-header">
-  <div class="container-page header-inner">
-    <div class="brand">
-      <Wordmark subtitle="news" size={20} href="/" />
-    </div>
-    <nav class="header-nav" aria-label="Primary">
-      <a href="/" aria-current={Astro.url.pathname === '/' ? 'page' : undefined}>Wire</a>
-      <a href="/series/" aria-current={Astro.url.pathname.startsWith('/series') ? 'page' : undefined}>Desks</a>
-      <a href="/tags/" aria-current={Astro.url.pathname.startsWith('/tags') ? 'page' : undefined}>Topics</a>
-      <a href="/about/" aria-current={Astro.url.pathname.startsWith('/about') ? 'page' : undefined}>About</a>
-    </nav>
-    <div class="header-multisearch">
-      <MultiSearch client:idle />
-    </div>
-    <div class="header-controls-mount">
-      <HeaderControls client:idle />
+
+<header class="masthead-chrome" transition:persist="site-masthead">
+  {/* ── dateline strip ─────────────────────────────────────────────── */}
+  <div class="dateline-strip">
+    <div class="container-page dateline-inner">
+      <p class="edition mono">
+        <span class="edition-flag">Edition</span>
+        <span class="edition-no">№ {editionNo}</span>
+        <span class="edition-sep" aria-hidden="true">·</span>
+        <span class="edition-date">{editionDate}</span>
+        <span class="edition-sep is-wide" aria-hidden="true">·</span>
+        <span class="edition-price">Free · reader-supported</span>
+      </p>
+      <div class="wire-tools">
+        <div class="wire-family"><MultiSearch client:idle /></div>
+        <HeaderControls client:idle />
+      </div>
     </div>
   </div>
+
+  {/* ── nameplate block ────────────────────────────────────────────── */}
+  <div class="nameplate-block">
+    <div class="container-page nameplate-inner">
+      <a class="nameplate-link" href="/" aria-label="The Standpoint — home">
+        <span class="np-tick" aria-hidden="true"></span>
+        <h1 class="nameplate-name">The Standpoint</h1>
+      </a>
+      <p class="nameplate-motto mono">A wire desk that sorts signal from noise</p>
+    </div>
+  </div>
+
+  {/* ── column-ruled section index ─────────────────────────────────── */}
+  <nav class="section-index" aria-label="Sections">
+    <div class="container-page section-index-inner">
+      {sections.map((s) => (
+        <a
+          href={s.href}
+          class="section-tab"
+          aria-current={s.match(path) ? 'page' : undefined}
+        >
+          {s.label}
+        </a>
+      ))}
+    </div>
+  </nav>
 </header>
 
+{/* ── sticky wire-ticker mini-bar (appears after scrolling past masthead) ── */}
+<div class="wire-ticker" data-wire-ticker aria-hidden="true">
+  <div class="container-page wire-ticker-inner">
+    <a class="wt-mark" href="/"><span class="wt-tick" aria-hidden="true"></span>The Standpoint</a>
+    <nav class="wt-nav" aria-label="Sections">
+      {sections.map((s) => (
+        <a href={s.href} aria-current={s.match(path) ? 'page' : undefined}>{s.label}</a>
+      ))}
+    </nav>
+  </div>
+</div>
+
+<script>
+  // Reveal the sticky mini-bar only once the full masthead has scrolled off.
+  const ticker = document.querySelector<HTMLElement>('[data-wire-ticker]')
+  const mast = document.querySelector<HTMLElement>('.masthead-chrome')
+  if (ticker && mast) {
+    const io = new IntersectionObserver(
+      ([e]) => {
+        const show = !e.isIntersecting
+        ticker.dataset.show = String(show)
+        ticker.setAttribute('aria-hidden', String(!show))
+      },
+      { rootMargin: '-8px 0px 0px 0px', threshold: 0 },
+    )
+    // observe a 1px sentinel at the bottom of the masthead
+    io.observe(mast)
+  }
+</script>
+
 <style>
-  .site-header {
+  /* ── masthead chrome (full-width front-page block) ──────────────────── */
+  .masthead-chrome {
+    background: var(--paper);
+    border-bottom: 3px solid var(--ink);
+  }
+
+  /* dateline strip */
+  .dateline-strip {
+    border-bottom: 1px solid var(--rule);
+    background: color-mix(in oklab, var(--paper-2) 60%, var(--paper));
+  }
+  .dateline-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 40px;
+    padding-block: 0.375rem;
+  }
+  .edition {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .edition-flag { color: var(--flag); font-weight: 600; letter-spacing: 0.16em; }
+  .edition-no { color: var(--ink); }
+  .edition-sep { color: var(--rule-strong); }
+  .edition-price { color: var(--ink-mute); }
+  .wire-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+  }
+
+  /* nameplate */
+  .nameplate-block {
+    border-bottom: 1px solid var(--rule);
+  }
+  .nameplate-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-block: clamp(1.25rem, 3.5vw, 2.25rem) clamp(0.75rem, 2vw, 1.25rem);
+  }
+  .nameplate-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .np-tick {
+    width: 0.32em;
+    height: 0.82em;
+    flex: 0 0 auto;
+    background: var(--flag);
+  }
+  .nameplate-name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(2rem, 8vw, 4.75rem);
+    line-height: 0.94;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .nameplate-link:hover .nameplate-name { color: var(--accent); }
+  .nameplate-motto {
+    margin: 0.75rem 0 0;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* section index — a column-ruled front-page index, not a nav bar */
+  .section-index-inner {
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .section-index-inner::-webkit-scrollbar { display: none; }
+  .section-tab {
+    flex: 1 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    text-decoration: none;
+    border-left: 1px solid var(--rule);
+    transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+  }
+  .section-tab:first-child { border-left: 0; }
+  .section-tab:hover { color: var(--accent); background: var(--brand-soft); }
+  .section-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .section-tab[aria-current='page'] {
+    color: var(--ink);
+    box-shadow: inset 0 -3px 0 0 var(--flag);
+  }
+
+  /* ── sticky wire-ticker mini-bar ───────────────────────────────────── */
+  .wire-ticker {
     position: sticky;
     top: 0;
     z-index: 50;
-    background: color-mix(in oklab, var(--paper) 90%, transparent);
+    background: color-mix(in oklab, var(--paper) 92%, transparent);
     backdrop-filter: saturate(180%) blur(10px);
     -webkit-backdrop-filter: saturate(180%) blur(10px);
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule-strong);
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base) ease;
   }
-  .header-inner {
-    height: 64px;
+  .wire-ticker[data-show='true'] {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .wire-ticker-inner {
     display: flex;
     align-items: center;
     gap: 1.5rem;
+    height: 48px;
   }
-  .brand {
+  .wt-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
     flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-  }
-  .header-nav {
-    display: none;
-    gap: 1.5rem;
-    font-family: var(--font-utility, var(--font-mono));
-    font-size: 12px;
-    letter-spacing: 0.1em;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 15px;
     text-transform: uppercase;
-    color: var(--color-muted);
-  }
-  .header-nav a {
-    position: relative;
-    padding-block: 0.375rem;
-    color: var(--color-muted);
+    letter-spacing: -0.01em;
+    color: var(--ink);
     text-decoration: none;
-    transition: color var(--dur-fast, 120ms) ease;
   }
-  .header-nav a:hover {
-    color: var(--color-accent);
-  }
-  .header-nav a::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 2px;
-    background: var(--color-accent);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--dur-fast, 120ms) ease;
-  }
-  .header-nav a:hover::after,
-  .header-nav a[aria-current='page']::after {
-    transform: scaleX(1);
-  }
-  .header-nav a[aria-current='page'] {
-    color: var(--color-accent);
-  }
-  @media (min-width: 768px) {
-    .header-nav { display: inline-flex; align-items: center; }
-  }
-  .header-controls-mount {
-    margin-left: auto;
+  .wt-tick { width: 0.3em; height: 0.85em; background: var(--flag); }
+  .wt-nav {
     display: inline-flex;
-    align-items: center;
-  }
-  .header-multisearch {
+    gap: 1.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
     margin-left: auto;
-    display: inline-flex;
-    align-items: center;
   }
-  .header-multisearch + .header-controls-mount {
-    margin-left: 0.75rem;
+  .wt-nav::-webkit-scrollbar { display: none; }
+  .wt-nav a {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color var(--dur-fast) ease;
+  }
+  .wt-nav a:hover { color: var(--accent); }
+  .wt-nav a[aria-current='page'] { color: var(--ink); border-bottom: 2px solid var(--flag); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wire-ticker { transition: opacity var(--dur-fast) ease; }
+    .section-tab { transition: none; }
+  }
+
+  /* ── responsive: stack the wire tools below the edition line on phones ── */
+  @media (max-width: 639px) {
+    .dateline-inner { flex-direction: column; align-items: flex-start; gap: 0.5rem; padding-block: 0.5rem; }
+    .wire-tools { margin-left: 0; }
+    .edition-sep.is-wide, .edition-price { display: none; }
+    .nameplate-motto { letter-spacing: 0.14em; }
+    .section-tab { padding: 0.625rem 0.875rem; font-size: 11px; letter-spacing: 0.1em; }
+    .wt-mark { font-size: 13px; }
   }
 </style>
