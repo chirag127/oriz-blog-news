@@ -1,0 +1,85 @@
+---
+/*
+ * Wordmark — "THE STANDPOINT" wire-desk nameplate.
+ *
+ * News & Commentary identity: the desk name set in news-gothic caps
+ * (Libre Franklin), preceded by a burnt-sienna priority tick — the wire-service
+ * FLASH marker rendered as the brand mark. Each oriz site owns its own
+ * wordmark; this one is gothic + teal + a sienna tick, not a serif z-strike.
+ */
+
+interface Props {
+  /** Sub-section name — rendered after the desk name as a mono slug. */
+  subtitle?: string
+  /** Display size in CSS pixels. */
+  size?: number
+  /** Wrap the mark in an <a href="/"> — defaults to '/' when subtitle is set. */
+  href?: string | null
+  /** Render as <h1> (the masthead) rather than <div>. */
+  asHeading?: boolean
+}
+
+const { subtitle, size = 96, href = null, asHeading = false } = Astro.props
+const Tag = asHeading ? 'h1' : ('div' as const)
+---
+
+{
+  href ? (
+    <a class="wordmark-link" href={href} aria-label={subtitle ? `The Standpoint — ${subtitle}` : 'The Standpoint'}>
+      <Tag class="wordmark" style={`--wm-size: ${size}px;`}>
+        <span class="wordmark-tick" aria-hidden="true" />
+        <span class="wordmark-name">The Standpoint</span>
+        {subtitle && (
+          <span class="wordmark-sub">/ {subtitle}</span>
+        )}
+      </Tag>
+    </a>
+  ) : (
+    <Tag class="wordmark" style={`--wm-size: ${size}px;`}>
+      <span class="wordmark-tick" aria-hidden="true" />
+      <span class="wordmark-name">The Standpoint</span>
+      {subtitle && (
+        <span class="wordmark-sub">/ {subtitle}</span>
+      )}
+    </Tag>
+  )
+}
+
+<style>
+  .wordmark-link {
+    display: inline-block;
+    color: inherit;
+    text-decoration: none;
+  }
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: var(--wm-size, 21px);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .wordmark-tick {
+    display: inline-block;
+    width: 0.42em;
+    height: 0.95em;
+    flex: 0 0 auto;
+    background: var(--flag, #c2410c);
+  }
+  .wordmark-name {
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+  .wordmark-sub {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.62em;
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+    color: var(--accent);
+  }
+</style>

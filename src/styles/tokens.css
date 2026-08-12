@@ -1,0 +1,245 @@
+/*
+ * tokens.css — oriz-blog-news identity ("THE STANDPOINT", 2026-08).
+ *
+ * News & Commentary desk, grounded in the WIRE-SERVICE newsroom — not the
+ * printed broadsheet. Light warm-newsprint surface, deep wire-teal desk color
+ * for links/active, and ONE hot accent (burnt sienna) spent only on the
+ * BULLETIN priority flag. Body is a screen text-serif (Newsreader); headings
+ * are a news-gothic (Libre Franklin); datelines/slugs/priority codes are
+ * IBM Plex Mono.
+ *
+ * Deliberately opposite the sister oriz-blog "Signal Press" (dark + amber +
+ * Source Serif): this desk is LIGHT-first, GOTHIC-headed, TEAL-signalled.
+ *
+ * Every --color-* name is kept as an alias so chrome/legal/Footer components
+ * (which consume the shell token names) compile unchanged. Theme modes:
+ *   :root                              → light (default)
+ *   @media (prefers-color-scheme:dark) → dark, UNLESS [data-theme="light"]
+ *   [data-theme="dark"]                → dark, always (overrides system)
+ *   [data-theme="sepia"]               → warm paper variant
+ *   [data-theme="hc"]                  → pure black/white high contrast
+ */
+:root {
+  color-scheme: light;
+
+  /* ── wire-desk palette (light-first) ──────────────────────────────────
+     Warm bone newsprint surface + deep wire-teal desk signal + burnt-sienna
+     BULLETIN flag (the one hot accent, spent in exactly one place). */
+  --brand: #0a6e63; /* deep wire-teal — links, active, primary desk color */
+  --brand-soft: #dcefec; /* pale teal wash — hover, chips */
+  --flag: #c2410c; /* burnt sienna — BULLETIN / priority flag ONLY */
+  --success: #0a6e63;
+  --danger-color: #c2410c;
+
+  --paper: #fbfaf7; /* warm bone newsprint (page bg) */
+  --paper-2: #f3f1ea; /* slightly deeper panel / surface */
+  --surface: var(--paper-2);
+  --ink: #141a1f; /* near-black slate ink */
+  --ink-mute: #5b6570; /* slate secondary */
+  --rule: #ddd9cf; /* warm hairline */
+  --rule-strong: #c3beb0; /* heavier masthead rule */
+
+  /* canonical accent — wire-teal. Everything routes through --accent.
+     --cobalt kept ONLY as a back-compat alias → --accent. */
+  --accent: var(--brand);
+  --accent-soft: var(--brand-soft);
+  --cobalt: var(--accent);
+  --brand-tint: var(--brand-soft);
+  --sage: var(--success);
+  --vermilion: var(--flag);
+  --highlighter: var(--flag);
+
+  /* desk / vertical marker colours — wire-service priority hues. Thin ticks
+     and kicker dots only, never the page accent. */
+  --v-dev: #0a6e63; /* SIGNAL — desk teal */
+  --v-finance: #1d4ed8; /* MARKETS — ink blue */
+  --v-culture: #8b3a62; /* COMMENTARY — mulberry */
+  --v-health: #b45309; /* dispatch — amber-ochre */
+  --v-personal: #5b6570; /* NOISE — slate */
+
+  /* semantic passthroughs */
+  --color-bg: var(--paper);
+  --color-fg: var(--ink);
+  --color-accent: var(--brand);
+  --color-accent-fg: #fbfaf7;
+  --color-sage: var(--success);
+  --color-muted: var(--ink-mute);
+  --color-border: var(--rule);
+  --color-bg-soft: var(--paper-2);
+  --color-bg-muted: var(--paper-2);
+  --color-prose: var(--ink);
+  --color-fg-muted: var(--ink-mute);
+  --color-fg-soft: var(--ink-mute);
+
+  /* color alias layer (chrome components read these) */
+  --color-brand-indigo: var(--brand); /* name kept for compatibility */
+  --color-brand-indigo-soft: var(--brand-soft);
+  --color-brand-success: var(--success);
+  --color-brand-danger: var(--danger-color);
+  --color-neutral-0: #fbfaf7;
+  --color-neutral-50: #f3f1ea;
+  --color-neutral-100: #edeae1;
+  --color-neutral-200: #ddd9cf;
+  --color-neutral-300: #c3beb0;
+  --color-neutral-500: #5b6570;
+  --color-neutral-700: #303941;
+  --color-neutral-900: #141a1f;
+  --color-neutral-1000: #000000;
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-mute: var(--ink-mute);
+  --color-rule: var(--rule);
+
+  /* ── type ───────────────────────────────────────────────────────────
+     Font families are declared ONCE, in global.css @theme (Tailwind emits
+     the --font-* custom properties from there). Not duplicated here to
+     avoid last-write-wins drift between the two files.
+     ─────────────────────────────────────────────────────────────────── */
+
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 48px;
+
+  /* spacing — 8 steps */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* motion — 3 durations + 3 easings */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* breakpoints */
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1440px;
+
+  /* radii + containers — near-zero radius: a wire terminal, not a card UI */
+  --radius-card: 2px;
+  --radius-button: 2px;
+  --container-page: 1100px;
+}
+
+/* ── DARK — system preference, unless user forced light ─────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    /* deep teal-slate night desk + bright wire-teal signal */
+    --brand: #4fd1c5;
+    --brand-soft: #123331;
+    --flag: #f97316;
+    --success: #4fd1c5;
+    --danger-color: #f97316;
+    --paper: #10161a;
+    --paper-2: #171f24;
+    --ink: #eef2f0;
+    --ink-mute: #93a1a5;
+    --rule: #26313a;
+    --rule-strong: #37454f;
+    --v-dev: #4fd1c5;
+    --v-finance: #7aa2ff;
+    --v-culture: #e08bb4;
+    --v-health: #f0a35a;
+    --v-personal: #93a1a5;
+    --color-accent-fg: #10161a;
+    --color-neutral-0: #10161a;
+    --color-neutral-50: #171f24;
+    --color-neutral-100: #1e272e;
+    --color-neutral-200: #26313a;
+    --color-neutral-300: #37454f;
+    --color-neutral-500: #93a1a5;
+    --color-neutral-700: #c4cfd2;
+    --color-neutral-900: #eef2f0;
+  }
+}
+
+/* ── DARK — explicit user override, wins over system ────────────────── */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --brand: #4fd1c5;
+  --brand-soft: #123331;
+  --flag: #f97316;
+  --success: #4fd1c5;
+  --danger-color: #f97316;
+  --paper: #10161a;
+  --paper-2: #171f24;
+  --ink: #eef2f0;
+  --ink-mute: #93a1a5;
+  --rule: #26313a;
+  --rule-strong: #37454f;
+  --v-dev: #4fd1c5;
+  --v-finance: #7aa2ff;
+  --v-culture: #e08bb4;
+  --v-health: #f0a35a;
+  --v-personal: #93a1a5;
+  --color-accent-fg: #10161a;
+  --color-neutral-0: #10161a;
+  --color-neutral-50: #171f24;
+  --color-neutral-100: #1e272e;
+  --color-neutral-200: #26313a;
+  --color-neutral-300: #37454f;
+  --color-neutral-500: #93a1a5;
+  --color-neutral-700: #c4cfd2;
+  --color-neutral-900: #eef2f0;
+}
+
+/* ── SEPIA — deeper warm newsprint variant ──────────────────────────── */
+:root[data-theme='sepia'] {
+  color-scheme: light;
+  --brand: #0a6e63;
+  --brand-soft: #e3ddca;
+  --flag: #b23c0a;
+  --paper: #f2ead6;
+  --paper-2: #e9e0c9;
+  --ink: #2c2a22;
+  --ink-mute: #6f6752;
+  --rule: #d6cbaf;
+  --rule-strong: #c1b491;
+  --color-accent-fg: #f2ead6;
+  --color-fg-soft: color-mix(in oklab, var(--ink) 55%, var(--paper));
+  --color-neutral-50: #e9e0c9;
+  --color-neutral-100: #ded3b6;
+  --color-neutral-200: #d6cbaf;
+  --color-neutral-500: #6f6752;
+  --color-neutral-700: #4a4436;
+  --color-neutral-900: #2c2a22;
+}
+
+/* ── HIGH-CONTRAST — pure black/white, hard borders ─────────────────── */
+:root[data-theme='hc'] {
+  color-scheme: light;
+  --brand: #005a50;
+  --brand-soft: #d5efec;
+  --flag: #a3320a;
+  --paper: #ffffff;
+  --paper-2: #ffffff;
+  --ink: #000000;
+  --ink-mute: #262626;
+  --rule: #000000;
+  --rule-strong: #000000;
+  --color-accent-fg: #ffffff;
+  --color-fg-soft: #262626;
+  --color-neutral-50: #ffffff;
+  --color-neutral-100: #ffffff;
+  --color-neutral-200: #000000;
+  --color-neutral-500: #262626;
+  --color-neutral-700: #000000;
+  --color-neutral-900: #000000;
+}
