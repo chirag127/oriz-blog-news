@@ -1,0 +1,176 @@
+---
+/**
+ * BreakingTicker — signature component for oriz-blog-news.
+ *
+ * A scrolling wire-service headline ticker in the newsroom style:
+ * "BREAKING" flag (burnt-sienna) + scrolling post titles in a
+ * marquee-style band. Runs purely in CSS (scroll animation) with
+ * a no-JS / reduced-motion fallback that shows a static list instead.
+ *
+ * Accepts an array of { title, href } items. Best with 3-6 items.
+ */
+import type { CollectionEntry } from 'astro:content'
+
+export interface Props {
+  posts: CollectionEntry<'blog'>[]
+}
+
+const { posts } = Astro.props
+const items = posts.slice(0, 6)
+---
+
+<div class="bt-wrap" role="region" aria-label="Breaking dispatches">
+  <span class="bt-flag" aria-hidden="true">Breaking</span>
+  <div class="bt-track-outer" aria-hidden="true">
+    <!-- duplicated for seamless loop -->
+    <ul class="bt-track">
+      {items.map((p) => (
+        <li class="bt-item">
+          <span class="bt-bullet" aria-hidden="true"></span>
+          <a href={`/blog/${p.id}`} tabindex="-1">{p.data.title}</a>
+        </li>
+      ))}
+      {items.map((p) => (
+        <li class="bt-item" aria-hidden="true">
+          <span class="bt-bullet" aria-hidden="true"></span>
+          <a href={`/blog/${p.id}`} tabindex="-1">{p.data.title}</a>
+        </li>
+      ))}
+    </ul>
+  </div>
+  <!-- accessible static list (screen readers + no-JS) -->
+  <ul class="bt-a11y">
+    {items.map((p) => (
+      <li><a href={`/blog/${p.id}`}>{p.data.title}</a></li>
+    ))}
+  </ul>
+</div>
+
+<style>
+  .bt-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--ink);
+    color: var(--paper);
+    overflow: hidden;
+    height: 36px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .bt-flag {
+    flex: 0 0 auto;
+    background: var(--flag);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 0 1rem;
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    z-index: 1;
+  }
+
+  .bt-track-outer {
+    flex: 1 1 auto;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    /* fade edges */
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%);
+  }
+
+  .bt-track {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: max-content;
+    animation: bt-scroll 28s linear infinite;
+  }
+
+  @keyframes bt-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  .bt-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 1.75rem;
+    white-space: nowrap;
+    height: 100%;
+  }
+
+  .bt-bullet {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--flag);
+    flex: 0 0 auto;
+  }
+
+  .bt-item a {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--paper);
+    text-decoration: none;
+    transition: color var(--dur-fast) ease;
+  }
+
+  .bt-item a:hover { color: var(--brand-soft); }
+
+  /* accessible static list — visually hidden, readable by screen readers */
+  .bt-a11y {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* reduced-motion: show static list, hide marquee */
+  @media (prefers-reduced-motion: reduce) {
+    .bt-wrap {
+      height: auto;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 0.5rem 0;
+    }
+    .bt-track-outer { display: none; }
+    .bt-a11y {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
+      clip: auto;
+      white-space: normal;
+      list-style: none;
+      padding: 0 1rem;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .bt-a11y a {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--paper);
+      text-decoration: none;
+    }
+    .bt-a11y a:hover { color: var(--brand-soft); }
+  }
+</style>

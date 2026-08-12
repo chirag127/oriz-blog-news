@@ -40,25 +40,24 @@ const tags = (await getTagsWithCounts()).slice(0, 8).map(({ tag }) => tag)
       </ul>
     </div>
     <div class="bf-col">
-      <h3 class="bf-h">Recent</h3>
+      <h3 class="bf-h">Wire</h3>
       <ul>
-        <li><a href="/blog/">Latest posts</a></li>
-        <li><a href="/archive/">Archive</a></li>
-        <li><a href="/archive/">All posts</a></li>
+        <li><a href="/blog/">Latest dispatches</a></li>
+        <li><a href="/archive/">Full archive</a></li>
         <li><a href="/now/">Now</a></li>
       </ul>
     </div>
     <div class="bf-col">
-      <h3 class="bf-h">Tags</h3>
+      <h3 class="bf-h">Topics</h3>
       <ul class="bf-tags">
         {tags.map((t) => <li><a href={`/tags/${slugifyTag(t)}/`}>#{t}</a></li>)}
       </ul>
     </div>
     <div class="bf-col">
-      <h3 class="bf-h">Series</h3>
+      <h3 class="bf-h">Threads</h3>
       <ul>
-        <li><a href="/series/">Browse series</a></li>
-        <li><a href="/blog/">Latest threads</a></li>
+        <li><a href="/series/">Browse threads</a></li>
+        <li><a href="/blog/">Latest on the wire</a></li>
       </ul>
     </div>
   </div>

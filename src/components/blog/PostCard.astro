@@ -1,11 +1,11 @@
 ---
 /**
- * PostCard — editorial listing entry ("Signal Press"). One hairline-ruled
- * row (no rounded card, no shadow, no radius): a vertical-coloured kicker
- * rule + desk label, a serif headline, a one-line dek, and a mono meta foot
- * (date · reading time). Used by every listing (index, tag, category,
- * related). The whole entry is one link; the desk kicker deep-links to the
- * category.
+ * PostCard — wire-desk dispatch row ("The Standpoint").
+ *
+ * Newspaper-style row: a left priority-flag column (vertical color bar +
+ * desk label) and a right content column (headline, dek, dateline). The
+ * color bar renders as a thick left rule, not a rounded chip — this is
+ * strictly editorial, zero radius. Used on /blog/, /categories/, /tags/.
  */
 import type { CollectionEntry } from 'astro:content'
 import { formatPostDate, postVertical, slugifyTag, verticalLabel } from '~/lib/blog'
@@ -23,16 +23,18 @@ const vert = postVertical(post)
 
 <article class="post-card" data-vertical={vert}>
   <a class="post-card-link" href={href}>
-    <span class="post-card-kicker">
-      <span class="post-card-tick" aria-hidden="true"></span>
-      <span class="post-card-desk">{verticalLabel(vert)}</span>
-      <span class="post-card-cat">{category}</span>
+    <span class="post-card-flag-col" aria-hidden="true">
+      <span class="post-card-bar"></span>
+      <span class="post-card-desk-label mono">{verticalLabel(vert)}</span>
     </span>
-    <h3 class="post-card-title">{title}</h3>
-    <p class="post-card-desc">{description}</p>
-    <span class="post-card-foot">
-      <time datetime={pubDate.toISOString()}>{formatPostDate(pubDate)}</time>
-      {readingTime && <span class="post-card-rt">{readingTime}</span>}
+    <span class="post-card-body">
+      <span class="post-card-meta mono">
+        <time datetime={pubDate.toISOString()}>{formatPostDate(pubDate)}</time>
+        {readingTime && <span class="post-card-rt">{readingTime}</span>}
+        <span class="post-card-cat-badge">{category}</span>
+      </span>
+      <h3 class="post-card-title">{title}</h3>
+      {description && <p class="post-card-desc">{description}</p>}
     </span>
   </a>
   <a class="post-card-cat-link" href={catHref} aria-label={`More in ${category}`}>{category}</a>
@@ -51,51 +53,78 @@ const vert = postVertical(post)
 
   .post-card-link {
     display: grid;
-    gap: 0.5rem;
-    padding: 1.125rem 0 1.25rem 0.875rem;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 0;
+    padding-block: 1rem;
     text-decoration: none;
     color: var(--ink);
-    border-left: 2px solid transparent;
-    margin-left: -0.875rem;
-    padding-left: 0.875rem;
-    transition: border-color var(--dur-fast, 120ms) ease;
   }
-  .post-card-link:hover { border-left-color: var(--v); }
 
-  .post-card-kicker {
+  /* Left flag column: thin color bar + rotated desk label */
+  .post-card-flag-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.15rem;
+  }
+  .post-card-bar {
+    width: 3px;
+    min-height: 40px;
+    flex: 1 0 auto;
+    background: var(--v);
+    display: block;
+  }
+  .post-card-desk-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--v);
+    font-weight: 700;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    line-height: 1;
+    flex: 0 0 auto;
+  }
+
+  /* Right content body */
+  .post-card-body {
+    display: grid;
+    gap: 0.35rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid color-mix(in oklab, var(--rule) 80%, transparent);
+  }
+  .post-card-meta {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    font-family: var(--font-mono);
     font-size: 11px;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.06em;
+    color: var(--ink-mute);
+  }
+  .post-card-rt::before { content: '·'; margin-right: 0.5rem; }
+  .post-card-cat-badge {
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    padding: 0.05rem 0.4rem;
+    font-size: 10px;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--ink-mute);
-  }
-  .post-card-tick {
-    width: 7px;
-    height: 7px;
-    background: var(--v);
-    flex: 0 0 auto;
-  }
-  .post-card-desk { color: var(--v); font-weight: 500; }
-  .post-card-cat {
-    color: var(--ink-mute);
-    border-left: 1px solid var(--rule);
-    padding-left: 0.5rem;
-    letter-spacing: 0.1em;
   }
 
   .post-card-title {
     font-family: var(--font-display);
-    font-size: 1.375rem;
-    font-weight: 600;
-    letter-spacing: -0.015em;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.018em;
     line-height: 1.2;
     margin: 0;
     color: var(--ink);
   }
   .post-card-link:hover .post-card-title { color: var(--accent); }
+  .post-card-link:hover .post-card-bar { background: var(--accent); }
 
   .post-card-desc {
     color: var(--ink-mute);
@@ -110,36 +139,19 @@ const vert = postVertical(post)
     -webkit-box-orient: vertical;
     line-clamp: 2;
   }
-  .post-card-foot {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    color: var(--ink-mute);
-  }
-  .post-card-rt::before {
-    content: '·';
-    margin-right: 0.75rem;
-    color: var(--rule-strong, var(--rule));
-  }
-  /* Sibling deep-link to category — visually hidden, keyboard reachable. */
+
+  /* Category deep-link — visually hidden, keyboard accessible */
   .post-card-cat-link {
     position: absolute;
     inset: 0 0 auto auto;
-    width: 1px;
-    height: 1px;
+    width: 1px; height: 1px;
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
   }
   .post-card-cat-link:focus-visible {
-    width: auto;
-    height: auto;
-    clip: auto;
-    top: 1.125rem;
-    right: 0;
+    width: auto; height: auto; clip: auto;
+    top: 1rem; right: 0;
     padding: 0.125rem 0.5rem;
     background: var(--paper);
     border: 1px solid var(--accent);
@@ -147,5 +159,11 @@ const vert = postVertical(post)
     font-family: var(--font-mono);
     font-size: 11px;
     text-transform: uppercase;
+  }
+
+  @media (max-width: 480px) {
+    .post-card-link { grid-template-columns: 36px minmax(0, 1fr); }
+    .post-card-desk-label { display: none; }
+    .post-card-bar { min-height: 32px; }
   }
 </style>

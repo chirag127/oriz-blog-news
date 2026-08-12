@@ -1,24 +1,31 @@
 ---
-import SeriesSpine from '~/components/SeriesSpine.astro'
 /**
- * /  — oriz-blog homepage ("Signal Press" front page).
+ * / — The Standpoint front page.
  *
- * Above the fold: a real newspaper masthead — mono dateline (Vol. N · date ·
- * dispatch count), a big Source Serif 4 nameplate, the active-series spine
- * (`●─●─○─○`), and a colour-flagged LEAD STORY. Below: three hairline strata:
- *   1. IN PROGRESS — series spines
- *   2. RECENT      — last 7 posts, each with its vertical desk kicker
- *   3. BY CATEGORY — one typographic row, each desk in its vertical colour
+ * News-desk layout: broadsheet front page with three distinct zones:
  *
- * No cover images, no cards, no radius. Verticals (Dev/Finance/Culture/
- * Health/Personal) each carry their own marker colour (--v-*).
+ * 1. MASTHEAD DATELINE — edition, date, count (already in Header, echoed here
+ *    as a section separator in the body)
+ * 2. BREAKING TICKER — scrolling wire-service headline band (BreakingTicker)
+ * 3. FRONT PAGE GRID — newspaper column layout:
+ *    ┌──────────────────────────┬──────────────────┐
+ *    │  LEAD STORY (2/3 width)  │  SECONDARY (1/3) │
+ *    │  big gothic headline     │  3 brief items   │
+ *    │  full dek paragraph      │  in column rules │
+ *    └──────────────────────────┴──────────────────┘
+ * 4. SECTION RULE — horizontal rule with "MORE ON THE WIRE" label
+ * 5. DISPATCH LEDGER — compact 2-col grid of next 8 posts (not PostCard)
+ * 6. DESKS STRIP — category index row (mono, color-coded)
+ *
+ * This layout is unique among the 24 oriz-blog-* siblings: it uses a
+ * newspaper-column grid for above-the-fold content, the BreakingTicker
+ * signature component, and a 2-column dispatch ledger not used anywhere else.
  */
+import BreakingTicker from '~/components/BreakingTicker.astro'
 import BaseLayout from '~/layouts/BaseLayout.astro'
 import {
   getCategoriesWithCounts,
-  getPostsInSeries,
   getPublishedPosts,
-  getSeriesWithCounts,
   postVertical,
   readingTimeFor,
   slugifyTag,
@@ -29,77 +36,19 @@ import { SITE_CONFIG } from '~/lib/config'
 
 const allPosts = await getPublishedPosts()
 const lead = allPosts[0]
-const recentPosts = allPosts.slice(1, 8)
-
-const seriesAll = await getSeriesWithCounts()
-// In-progress: series where at least one post exists. We model "published"
-// as the count of currently-published parts. Total is exposed as a heuristic
-// (count + a small tail of "drafting" dots) — for v1 of the v2 design, we
-// just use count for total and count for published, and animate the last
-// dot as `current` so the spine has the signature glyph (`⦿`) visible.
-type InProgress = {
-  name: string
-  slug: string
-  total: number
-  published: number
-  current: number
-  latest: Date
-  parts: Awaited<ReturnType<typeof getPostsInSeries>>
-}
-const inProgress: InProgress[] = []
-for (const { series, count } of seriesAll.slice(0, 4)) {
-  const parts = await getPostsInSeries(series)
-  const latest = parts.reduce(
-    (max, p) => (p.data.pubDate > max ? p.data.pubDate : max),
-    parts[0].data.pubDate,
-  )
-  // Total must never be less than what's already published (otherwise the
-  // label reads "part 29 of 12"). Use the larger of: published count, the
-  // largest explicit `part` field, or published+1 to hint one more coming.
-  const explicitMax = parts.reduce((mx, p) => {
-    const v = typeof p.data.part === 'number' ? p.data.part : Number(p.data.part)
-    return Number.isFinite(v) ? Math.max(mx, v) : mx
-  }, 0)
-  const total = Math.max(count, explicitMax, count + 1)
-  inProgress.push({
-    name: series,
-    slug: slugifyTag(series),
-    total,
-    published: count,
-    current: count, // last filled dot is "current"
-    latest,
-    parts,
-  })
-}
-inProgress.sort((a, b) => b.latest.valueOf() - a.latest.valueOf())
+const secondary = allPosts.slice(1, 4)
+const ledger = allPosts.slice(4, 12)
 
 const cats = await getCategoriesWithCounts()
 
-// Masthead dateline — "VOL. N · <today, long>" — the front-page nameplate.
-const now = new Date()
-const dateline = now.toLocaleDateString('en-GB', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-})
-const volume = now.getFullYear() - 2018 // notebook began 2019 → Vol. 1
-void volume
 const leadVertical = lead ? postVertical(lead) : 'personal'
 const leadRt = lead ? (lead.data.readingTime ?? readingTimeFor(lead)) : ''
 
-// "Days since" helper for the in-progress rail.
-function ago(date: Date): string {
-  const days = Math.floor((Date.now() - date.valueOf()) / 86_400_000)
-  if (days < 1) return 'today'
-  if (days === 1) return '1d ago'
-  if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
-  if (months === 1) return '1mo ago'
-  if (months < 12) return `${months}mo ago`
-  const years = Math.floor(days / 365)
-  return years === 1 ? '1y ago' : `${years}y ago`
-}
+const now = new Date()
+const editionLong = now.toLocaleDateString('en-GB', {
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+})
+const dispatchWord = allPosts.length === 1 ? 'dispatch' : 'dispatches'
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -112,123 +61,133 @@ const jsonLd = {
 ---
 
 <BaseLayout
-  title="oriz / blog"
+  title="oriz / news"
   description={SITE_CONFIG.description}
   jsonLd={jsonLd}
   hideSidebar
 >
-  <div class="container-page">
-    {/* Wire desk hero — the THESIS, not a nameplate. */}
-    <section class="masthead" aria-label="Desk thesis">
-      <div class="dateline mono">
-        <span class="dateline-vol">Wire</span>
-        <span class="dateline-sep" aria-hidden="true">·</span>
-        <span class="dateline-date">{dateline}</span>
-        <span class="dateline-sep" aria-hidden="true">·</span>
-        <span class="dateline-count"><span class="count">{allPosts.length}</span> dispatches on file</span>
-      </div>
-      <p class="nameplate">Every story is a claim before it is a fact.</p>
-      <p class="nameplate-sub">This desk reads the news the way it should be read — slowly, with sources named and the claim held apart from the proof. Here is the method, and the running file that puts it to work.</p>
-      <p class="masthead-cta">
-        <a class="masthead-cta-link" href="/blog/how-to-read-the-news-critically/">
-          <span class="masthead-cta-tick" aria-hidden="true"></span>
-          Read the method
-        </a>
-      </p>
-    </section>
+  {/* ── Breaking ticker ────────────────────────────────────────────── */}
+  {allPosts.length > 0 && <BreakingTicker posts={allPosts.slice(0, 6)} />}
 
+  <div class="fp-page">
+    {/* ── Sub-masthead section ───────────────────────────────────── */}
+    <div class="fp-sub-mast mono">
+      <span class="fp-edition-tag">Wire dispatch</span>
+      <span class="fp-sep" aria-hidden="true">·</span>
+      <time datetime={now.toISOString().slice(0, 10)}>{editionLong}</time>
+      <span class="fp-sep" aria-hidden="true">·</span>
+      <span><span class="fp-count">{allPosts.length}</span> {dispatchWord} on file</span>
+    </div>
+
+    <hr class="fp-mastline" />
+
+    {/* ── Front page: lead + secondary columns ──────────────────── */}
     {lead && (
-      <>
-        <hr class="rule-heavy" />
-        <section class="lead" data-vertical={leadVertical} aria-labelledby="lead-title">
-          <a class="lead-link" href={`/blog/${lead.id}`}>
-            <span class="lead-kicker mono">
-              <span class="lead-tick" aria-hidden="true"></span>
-              <span class="lead-desk">{verticalLabel(leadVertical)}</span>
-              <span class="lead-flag">Lead dispatch</span>
+      <section class="fp-front" aria-label="Front page">
+        {/* Lead story — dominant left column */}
+        <article class="fp-lead" data-vertical={leadVertical}>
+          <a class="fp-lead-link" href={`/blog/${lead.id}`}>
+            <span class="fp-lead-flag mono">
+              <span class="fp-flag-tick" aria-hidden="true"></span>
+              <span class="fp-flag-desk">{verticalLabel(leadVertical)}</span>
+              <span class="fp-flag-label">Lead story</span>
             </span>
-            <h2 id="lead-title" class="lead-title">{lead.data.title}</h2>
-            <p class="lead-dek">{lead.data.description}</p>
-            <span class="lead-meta mono">
-              <time datetime={lead.data.pubDate.toISOString()}>{lead.data.pubDate.toISOString().slice(0, 10)}</time>
+            <h2 class="fp-lead-hed">{lead.data.title}</h2>
+            <p class="fp-lead-dek">{lead.data.description}</p>
+            <span class="fp-lead-meta mono">
+              <time datetime={lead.data.pubDate.toISOString()}>
+                {lead.data.pubDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </time>
               <span aria-hidden="true">·</span>
               <span>{leadRt}</span>
             </span>
           </a>
-        </section>
-      </>
-    )}
+        </article>
 
-    <hr class="hairline" />
+        {/* Column rule */}
+        <div class="fp-col-rule" aria-hidden="true"></div>
 
-    {/* Stratum 1 — IN PROGRESS. */}
-    {inProgress.length > 0 && (
-      <section class="stratum stratum-progress" aria-labelledby="s-progress">
-        <h2 id="s-progress" class="stratum-h mono">Open desks</h2>
-        <ul class="progress-list">
-          {inProgress.map((s) => (
-            <li class="progress-row">
-              <a class="progress-link" href={`/series/${s.slug}/`}>
-                <span class="progress-name">{s.name}</span>
-                <span class="progress-meta mono">part {s.published} of {s.total}</span>
-                <span class="progress-spine-mount">
-                  <SeriesSpine
-                    total={s.total}
-                    published={s.published}
-                    current={s.current}
-                    size="md"
-                  />
-                </span>
-                <span class="progress-ago mono">{ago(s.latest)}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        {/* Secondary column — 3 briefer stories */}
+        {secondary.length > 0 && (
+          <aside class="fp-secondary" aria-label="More stories">
+            <p class="fp-secondary-hed mono">Also on the wire</p>
+            <ul class="fp-sec-list">
+              {secondary.map((p) => {
+                const v = postVertical(p)
+                return (
+                  <li class="fp-sec-item" data-vertical={v}>
+                    <a class="fp-sec-link" href={`/blog/${p.id}`}>
+                      <span class="fp-sec-kicker mono">
+                        <span class="fp-sec-tick" aria-hidden="true"></span>
+                        {verticalLabel(v)}
+                      </span>
+                      <span class="fp-sec-title">{p.data.title}</span>
+                      <time class="fp-sec-date mono" datetime={p.data.pubDate.toISOString()}>
+                        {p.data.pubDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      </time>
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+          </aside>
+        )}
       </section>
     )}
 
-    <hr class="hairline" />
+    {/* ── Section rule ──────────────────────────────────────────── */}
+    {ledger.length > 0 && (
+      <div class="fp-section-rule" role="separator">
+        <span class="fp-section-label mono">More on the wire</span>
+      </div>
+    )}
 
-    {/* Stratum 2 — RECENT. */}
-    <section class="stratum stratum-recent" aria-labelledby="s-recent">
-      <h2 id="s-recent" class="stratum-h mono">On the wire</h2>
-      <ul class="recent-list">
-        {recentPosts.map((p) => (
-          <li class="recent-row" data-vertical={postVertical(p)}>
-            <a class="recent-link" href={`/blog/${p.id}`}>
-              <time class="recent-date mono" datetime={p.data.pubDate.toISOString()}>
-                {p.data.pubDate.toISOString().slice(0, 10)}
-              </time>
-              <span class="recent-meat">
-                <span class="recent-kicker mono">
-                  <span class="recent-tick" aria-hidden="true"></span>{verticalLabel(postVertical(p))}
-                </span>
-                <span class="recent-title">{p.data.title}</span>
-                <span class="recent-dek">{p.data.description}</span>
-              </span>
-              <span class="recent-rt mono">{p.data.readingTime ?? readingTimeFor(p)}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-      <p class="all-link">
-        <a href="/archive/">read all {allPosts.length} dispatches in the archive →</a>
-      </p>
-    </section>
+    {/* ── Dispatch ledger — 2-col grid ──────────────────────────── */}
+    {ledger.length > 0 && (
+      <section class="fp-ledger" aria-labelledby="ledger-head">
+        <h2 id="ledger-head" class="sr-only">Dispatch ledger</h2>
+        <ul class="fp-ledger-grid">
+          {ledger.map((p) => {
+            const v = postVertical(p)
+            const rt = p.data.readingTime ?? readingTimeFor(p)
+            return (
+              <li class="fp-ledger-item" data-vertical={v}>
+                <a class="fp-ledger-link" href={`/blog/${p.id}`}>
+                  <span class="fp-ledger-kicker mono">
+                    <span class="fp-ledger-tick" aria-hidden="true"></span>
+                    <span class="fp-ledger-desk">{verticalLabel(v)}</span>
+                    <time class="fp-ledger-date" datetime={p.data.pubDate.toISOString()}>
+                      {p.data.pubDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    </time>
+                  </span>
+                  <span class="fp-ledger-title">{p.data.title}</span>
+                  <span class="fp-ledger-rt mono">{rt}</span>
+                </a>
+              </li>
+            )
+          })}
+        </ul>
+        <p class="fp-all-link">
+          <a href="/archive/">Read all {allPosts.length} dispatches in the archive →</a>
+        </p>
+      </section>
+    )}
 
-    <hr class="hairline" />
-
-    {/* Stratum 3 — BY CATEGORY (single typographic row). */}
+    {/* ── Desks strip ───────────────────────────────────────────── */}
     {cats.length > 0 && (
-      <section class="stratum stratum-cats" aria-labelledby="s-cats">
-        <h2 id="s-cats" class="stratum-h mono">Desks</h2>
-        <p class="cats-row">
+      <section class="fp-desks" aria-labelledby="desks-head">
+        <h2 id="desks-head" class="fp-desks-label mono">Desks</h2>
+        <p class="fp-desks-row">
           {cats.map((c, i) => (
             <>
-              {i > 0 && <span class="cats-dot" aria-hidden="true">·</span>}
-              <a href={`/categories/${slugifyTag(c.category)}/`} class="cats-link" data-vertical={verticalFor(c.category)}>
-                <span class="cats-name">{c.category}</span>
-                <span class="cats-count mono">({c.count})</span>
+              {i > 0 && <span class="fp-desks-sep" aria-hidden="true">·</span>}
+              <a
+                href={`/categories/${slugifyTag(c.category)}/`}
+                class="fp-desk-link"
+                data-vertical={verticalFor(c.category)}
+              >
+                <span class="fp-desk-name">{c.category}</span>
+                <span class="fp-desk-count mono">({c.count})</span>
               </a>
             </>
           ))}
@@ -239,228 +198,172 @@ const jsonLd = {
 </BaseLayout>
 
 <style>
-  .container-page {
-    max-width: 920px;
+  /* ── page shell ─────────────────────────────────────────────────── */
+  .fp-page {
+    max-width: var(--container-page, 1100px);
     margin-inline: auto;
-    padding-inline: clamp(1.25rem, 4vw, 2rem);
+    padding-inline: clamp(1rem, 4vw, 2rem);
   }
 
-  /* ── Masthead (front page) ─────────────────────────────────────────── */
-
-  .masthead {
-    padding-block: clamp(1.75rem, 5vw, 3rem) 1.5rem;
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
   }
-  .dateline {
+
+  /* ── sub-masthead ────────────────────────────────────────────────── */
+  .fp-sub-mast {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
     font-size: 11px;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--ink-mute);
-    padding-bottom: 0.875rem;
-    border-bottom: 1px solid var(--rule);
-    margin-bottom: 1.5rem;
+    padding-block: 0.875rem 0;
   }
-  .dateline-vol { color: var(--flag); font-weight: 600; text-transform: uppercase; letter-spacing: 0.22em; }
-  .dateline-sep { color: var(--rule-strong, var(--rule)); }
-  .dateline .count { color: var(--ink); }
-  .nameplate {
-    font-family: var(--font-display);
-    font-size: clamp(2.25rem, 6.5vw, 4.25rem);
-    font-weight: 800;
-    letter-spacing: -0.035em;
-    line-height: 0.98;
-    color: var(--ink);
-    margin: 0;
-    max-width: 15ch;
-    text-wrap: balance;
-  }
-  .nameplate-sub {
-    font-family: var(--font-serif);
-    font-size: clamp(1.0625rem, 2vw, 1.375rem);
-    line-height: 1.5;
-    color: var(--ink-mute);
-    margin: 1.125rem 0 0;
-    max-width: 56ch;
-  }
-  .masthead-cta {
-    margin: 1.75rem 0 0;
-  }
-  .masthead-cta-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.625rem;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    font-weight: 500;
-    color: var(--ink);
-    border-bottom: 2px solid var(--accent);
-    padding-bottom: 0.25rem;
-    transition: color var(--dur-fast, 120ms) ease, border-color var(--dur-fast, 120ms) ease;
-  }
-  .masthead-cta-link:hover { color: var(--accent); }
-  .masthead-cta-tick {
-    width: 8px;
-    height: 8px;
-    flex: 0 0 auto;
-    background: var(--flag);
-  }
+  .fp-edition-tag { color: var(--flag); font-weight: 700; letter-spacing: 0.2em; }
+  .fp-sep { color: var(--rule-strong); }
+  .fp-count { color: var(--ink); font-weight: 600; }
 
-  .rule-heavy {
+  .fp-mastline {
     height: 3px;
     background: var(--ink);
     border: 0;
-    margin: 0;
+    margin: 0.5rem 0 0;
   }
 
-  /* ── Lead story ────────────────────────────────────────────────────── */
-
-  .lead {
-    --v: var(--v-personal);
-    padding-block: 1.75rem 0.5rem;
-  }
-  .lead[data-vertical='dev'] { --v: var(--v-dev); }
-  .lead[data-vertical='finance'] { --v: var(--v-finance); }
-  .lead[data-vertical='culture'] { --v: var(--v-culture); }
-  .lead[data-vertical='health'] { --v: var(--v-health); }
-  .lead-link { display: grid; gap: 0.625rem; color: var(--ink); text-decoration: none; }
-  .lead-kicker {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-mute);
-  }
-  .lead-tick { width: 8px; height: 8px; background: var(--v); flex: 0 0 auto; }
-  .lead-desk { color: var(--v); font-weight: 500; }
-  .lead-flag { border-left: 1px solid var(--rule); padding-left: 0.5rem; color: var(--flag); font-weight: 600; }
-  .lead-title {
-    font-family: var(--font-display);
-    font-size: clamp(1.875rem, 4.5vw, 2.875rem);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.02;
-    margin: 0;
-    max-width: 20ch;
-  }
-  .lead-link:hover .lead-title { color: var(--accent); }
-  .lead-dek {
-    font-family: var(--font-serif);
-    font-size: 1.1875rem;
-    line-height: 1.5;
-    color: var(--ink-mute);
-    margin: 0;
-    max-width: 58ch;
-  }
-  .lead-meta { display: inline-flex; gap: 0.5rem; font-size: 11px; letter-spacing: 0.06em; color: var(--ink-mute); }
-
-  /* ── Strata ────────────────────────────────────────────────────────── */
-
-  .stratum { padding-block: 1.75rem 1.75rem; }
-  .stratum-h {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: var(--ink-mute);
-    font-weight: 500;
-    margin: 0 0 1.25rem;
-  }
-
-  /* ── In progress ──────────────────────────────────────────────────── */
-
-  .progress-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-  }
-  .progress-row { padding: 0; }
-  .progress-link {
+  /* ── front page: lead + secondary ──────────────────────────────── */
+  .fp-front {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
-    gap: 1rem;
-    align-items: baseline;
+    grid-template-columns: 1fr 1px minmax(0, 320px);
+    gap: 0;
+    padding-block: 1.75rem 0;
+    align-items: start;
+  }
+
+  /* Lead article */
+  .fp-lead {
+    --v: var(--v-personal);
+    padding-right: clamp(1.25rem, 3vw, 2rem);
+    padding-bottom: 1.5rem;
+  }
+  .fp-lead[data-vertical='dev'] { --v: var(--v-dev); }
+  .fp-lead[data-vertical='finance'] { --v: var(--v-finance); }
+  .fp-lead[data-vertical='culture'] { --v: var(--v-culture); }
+  .fp-lead[data-vertical='health'] { --v: var(--v-health); }
+
+  .fp-lead-link {
+    display: grid;
+    gap: 0.75rem;
     color: var(--ink);
     text-decoration: none;
-    padding-block: 0.5rem;
   }
-  .progress-link:hover { color: var(--accent); }
-  .progress-link:hover .progress-meta,
-  .progress-link:hover .progress-ago { color: var(--accent); }
-  .progress-name {
-    font-family: var(--font-display);
-    font-size: 1.0625rem;
+  .fp-lead-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .fp-flag-tick {
+    width: 9px; height: 9px;
+    background: var(--v);
+    flex: 0 0 auto;
+  }
+  .fp-flag-desk { color: var(--v); font-weight: 600; }
+  .fp-flag-label {
+    color: var(--flag);
     font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--ink);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    border-left: 1px solid var(--rule);
+    padding-left: 0.5rem;
   }
-  .progress-meta, .progress-ago {
-    font-family: var(--font-mono);
+  .fp-lead-hed {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.5vw, 3.25rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.0;
+    margin: 0;
+    max-width: 18ch;
+    text-wrap: balance;
+  }
+  .fp-lead-link:hover .fp-lead-hed { color: var(--accent); }
+  .fp-lead-dek {
+    font-family: var(--font-serif);
+    font-size: clamp(1.0625rem, 1.8vw, 1.25rem);
+    line-height: 1.52;
+    color: var(--ink-mute);
+    margin: 0;
+    max-width: 54ch;
+  }
+  .fp-lead-meta {
+    display: inline-flex;
+    gap: 0.5rem;
     font-size: 11px;
     letter-spacing: 0.06em;
     color: var(--ink-mute);
   }
-  .progress-spine-mount { display: inline-flex; }
 
-  @media (max-width: 640px) {
-    .progress-link {
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        'name      ago'
-        'meta      meta'
-        'spine     spine';
-      row-gap: 0.25rem;
-    }
-    .progress-name { grid-area: name; }
-    .progress-meta { grid-area: meta; }
-    .progress-spine-mount { grid-area: spine; }
-    .progress-ago { grid-area: ago; text-align: right; }
+  /* Column rule between lead and secondary */
+  .fp-col-rule {
+    width: 1px;
+    background: var(--rule);
+    align-self: stretch;
   }
 
-  /* ── Recent ───────────────────────────────────────────────────────── */
-
-  .recent-list {
+  /* Secondary column */
+  .fp-secondary {
+    padding-left: clamp(1.25rem, 3vw, 2rem);
+    padding-bottom: 1.5rem;
+    border-bottom: 0;
+  }
+  .fp-secondary-hed {
+    margin: 0 0 1rem;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    font-weight: 500;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .fp-sec-list {
     list-style: none;
     padding: 0;
     margin: 0;
     display: flex;
     flex-direction: column;
   }
-  .recent-row {
+  .fp-sec-item {
     --v: var(--v-personal);
-    border-bottom: 1px solid color-mix(in oklab, var(--rule) 70%, transparent);
+    border-bottom: 1px solid color-mix(in oklab, var(--rule) 65%, transparent);
   }
-  .recent-row[data-vertical='dev'] { --v: var(--v-dev); }
-  .recent-row[data-vertical='finance'] { --v: var(--v-finance); }
-  .recent-row[data-vertical='culture'] { --v: var(--v-culture); }
-  .recent-row[data-vertical='health'] { --v: var(--v-health); }
-  .recent-row:last-child { border-bottom: 0; }
-  .recent-link {
+  .fp-sec-item:last-child { border-bottom: 0; }
+  .fp-sec-item[data-vertical='dev'] { --v: var(--v-dev); }
+  .fp-sec-item[data-vertical='finance'] { --v: var(--v-finance); }
+  .fp-sec-item[data-vertical='culture'] { --v: var(--v-culture); }
+  .fp-sec-item[data-vertical='health'] { --v: var(--v-health); }
+
+  .fp-sec-link {
     display: grid;
-    grid-template-columns: 100px minmax(0, 1fr) auto;
-    gap: 1.25rem;
-    align-items: baseline;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 0.2rem 0.5rem;
+    padding-block: 0.875rem;
     color: var(--ink);
     text-decoration: none;
-    padding-block: 0.875rem;
-    padding-left: 0.75rem;
-    margin-left: -0.75rem;
+    padding-left: 0.625rem;
+    margin-left: -0.625rem;
     border-left: 2px solid transparent;
-    transition: border-color var(--dur-fast, 120ms) ease;
+    transition: border-color var(--dur-fast) ease;
+    align-items: start;
   }
-  .recent-link:hover { border-left-color: var(--v); }
-  .recent-link:hover .recent-title { color: var(--accent); }
-  .recent-link:hover .recent-date,
-  .recent-link:hover .recent-rt { color: var(--accent); }
-
-  .recent-kicker {
+  .fp-sec-link:hover { border-left-color: var(--v); }
+  .fp-sec-kicker {
+    grid-column: 1 / -1;
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
@@ -468,116 +371,202 @@ const jsonLd = {
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--v);
-    font-weight: 500;
+    font-weight: 600;
   }
-  .recent-tick { width: 6px; height: 6px; background: var(--v); flex: 0 0 auto; }
-
-  .recent-date {
-    color: var(--ink-mute);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    letter-spacing: 0.04em;
-    position: relative;
-    padding-left: 0.875rem;
+  .fp-sec-tick {
+    width: 6px; height: 6px;
+    background: var(--v);
+    flex: 0 0 auto;
   }
-  /* dateline gutter: coral tick marks the wire-feed timestamp */
-  .recent-date::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0.12em;
-    width: 3px;
-    height: 0.7em;
-    background: var(--cobalt);
-  }
-  .recent-meat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-    min-width: 0;
-  }
-  .recent-title {
+  .fp-sec-title {
+    grid-column: 1 / -1;
     font-family: var(--font-display);
-    font-size: 1.1875rem;
+    font-size: 1.0625rem;
     font-weight: 700;
     letter-spacing: -0.02em;
-    color: var(--ink);
     line-height: 1.22;
+    color: var(--ink);
   }
-  .recent-dek {
-    font-family: var(--font-serif);
-    font-size: 15.5px;
-    color: var(--ink-mute);
-    line-height: 1.45;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-  }
-  .recent-rt {
-    color: var(--ink-mute);
+  .fp-sec-link:hover .fp-sec-title { color: var(--accent); }
+  .fp-sec-date {
+    grid-column: 1 / -1;
     font-family: var(--font-mono);
     font-size: 11px;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
+    color: var(--ink-mute);
+  }
+
+  /* ── Section rule with label ─────────────────────────────────────── */
+  .fp-section-rule {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-block: 0 0;
+    border-top: 2px solid var(--ink);
+    padding-top: 0.5rem;
+  }
+  .fp-section-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    font-weight: 500;
     white-space: nowrap;
+    flex: 0 0 auto;
   }
 
-  @media (max-width: 640px) {
-    .recent-link {
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        'date   rt'
-        'meat   meat';
-      row-gap: 0.25rem;
-    }
-    .recent-date { grid-area: date; }
-    .recent-rt { grid-area: rt; text-align: right; }
-    .recent-meat { grid-area: meat; }
+  /* ── Dispatch ledger — 2-col grid ──────────────────────────────── */
+  .fp-ledger { padding-block: 1.25rem 1.5rem; }
+  .fp-ledger-grid {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
   }
+  .fp-ledger-item {
+    --v: var(--v-personal);
+    border-bottom: 1px solid color-mix(in oklab, var(--rule) 70%, transparent);
+  }
+  .fp-ledger-item:nth-child(odd) { border-right: 1px solid var(--rule); }
+  .fp-ledger-item[data-vertical='dev'] { --v: var(--v-dev); }
+  .fp-ledger-item[data-vertical='finance'] { --v: var(--v-finance); }
+  .fp-ledger-item[data-vertical='culture'] { --v: var(--v-culture); }
+  .fp-ledger-item[data-vertical='health'] { --v: var(--v-health); }
 
-  .all-link {
+  .fp-ledger-link {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.875rem 0.875rem 0.875rem 0.75rem;
+    color: var(--ink);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    margin-left: -2px;
+    transition: border-color var(--dur-fast) ease;
+  }
+  .fp-ledger-item:nth-child(odd) .fp-ledger-link { padding-right: 1.25rem; }
+  .fp-ledger-item:nth-child(even) .fp-ledger-link { padding-left: 1.25rem; margin-left: 0; border-left: 0; border-right: 2px solid transparent; margin-right: -2px; }
+  .fp-ledger-link:hover { border-left-color: var(--v); border-right-color: var(--v); }
+  .fp-ledger-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .fp-ledger-tick {
+    width: 6px; height: 6px;
+    background: var(--v);
+    flex: 0 0 auto;
+  }
+  .fp-ledger-desk { color: var(--v); font-weight: 600; }
+  .fp-ledger-date { border-left: 1px solid var(--rule); padding-left: 0.4rem; }
+  .fp-ledger-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.22;
+    color: var(--ink);
+  }
+  .fp-ledger-link:hover .fp-ledger-title { color: var(--accent); }
+  .fp-ledger-rt {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--ink-mute);
+  }
+  .fp-all-link {
     margin: 1.25rem 0 0;
+    font-size: 13px;
     font-family: var(--font-sans);
-    font-size: 13.6px;
   }
-  .all-link a {
+  .fp-all-link a {
     color: var(--ink-mute);
     text-decoration: underline;
     text-underline-offset: 3px;
     text-decoration-color: var(--rule);
   }
-  .all-link a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+  .fp-all-link a:hover { color: var(--accent); text-decoration-color: var(--accent); }
 
-  /* ── By category (one row) ────────────────────────────────────────── */
-
-  .cats-row {
+  /* ── Desks strip ─────────────────────────────────────────────────── */
+  .fp-desks {
+    border-top: 1px solid var(--rule);
+    padding-block: 1.25rem 2rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    align-items: baseline;
+  }
+  .fp-desks-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    font-weight: 500;
+    margin: 0;
+    white-space: nowrap;
+  }
+  .fp-desks-row {
     margin: 0;
     line-height: 2;
-    color: var(--ink);
   }
-  .cats-link {
+  .fp-desks-sep { color: var(--rule-strong); margin-inline: 0.625rem; }
+  .fp-desk-link {
     --v: var(--v-personal);
     color: var(--ink);
     text-decoration: none;
-    margin-inline: 0.125rem;
+    margin-inline: 0.1rem;
   }
-  .cats-link[data-vertical='dev'] { --v: var(--v-dev); }
-  .cats-link[data-vertical='finance'] { --v: var(--v-finance); }
-  .cats-link[data-vertical='culture'] { --v: var(--v-culture); }
-  .cats-link[data-vertical='health'] { --v: var(--v-health); }
-  .cats-link:hover .cats-name { color: var(--v); }
-  .cats-name {
+  .fp-desk-link[data-vertical='dev'] { --v: var(--v-dev); }
+  .fp-desk-link[data-vertical='finance'] { --v: var(--v-finance); }
+  .fp-desk-link[data-vertical='culture'] { --v: var(--v-culture); }
+  .fp-desk-link[data-vertical='health'] { --v: var(--v-health); }
+  .fp-desk-link:hover .fp-desk-name { color: var(--v); }
+  .fp-desk-name {
     font-family: var(--font-display);
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 600;
     letter-spacing: -0.01em;
   }
-  .cats-count {
+  .fp-desk-count {
     color: var(--ink-mute);
     font-family: var(--font-mono);
     font-size: 11px;
-    margin-left: 0.25rem;
+    margin-left: 0.2rem;
   }
-  .cats-dot { color: var(--rule); margin-inline: 0.625rem; }
+
+  /* ── responsive ─────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .fp-front {
+      grid-template-columns: 1fr;
+    }
+    .fp-col-rule { display: none; }
+    .fp-lead { padding-right: 0; border-bottom: 1px solid var(--rule); margin-bottom: 1.5rem; }
+    .fp-secondary { padding-left: 0; }
+    .fp-desks { grid-template-columns: 1fr; gap: 0.5rem; }
+  }
+
+  @media (max-width: 600px) {
+    .fp-ledger-grid { grid-template-columns: 1fr; }
+    .fp-ledger-item:nth-child(odd) { border-right: 0; }
+    .fp-ledger-item:nth-child(even) .fp-ledger-link {
+      padding-left: 0.75rem;
+      margin-left: -2px;
+      border-left: 2px solid transparent;
+      border-right: 0;
+      margin-right: 0;
+    }
+    .fp-sub-mast { font-size: 10px; gap: 0.35rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fp-lead-link,
+    .fp-sec-link,
+    .fp-ledger-link { transition: none; }
+  }
 </style>
